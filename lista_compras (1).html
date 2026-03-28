@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lista de Compras">
+<meta name="theme-color" content="#1D6E4F">
+<title>Lista de Compras</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --green:#1D6E4F; --green-light:#E8F5EE; --green-mid:#9FE1CB;
+  --red:#E24B4A;
+  --gray:#f4f4f4; --border:#e8e8e8; --text:#1a1a1a; --muted:#888;
+  --card:#fff; --safe-top:env(safe-area-inset-top); --safe-bottom:env(safe-area-inset-bottom);
+}
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--gray); color:var(--text); min-height:100vh; overflow-x:hidden; }
+
+.header { background:var(--green); color:white; padding:calc(16px + var(--safe-top)) 20px 16px; position:sticky; top:0; z-index:100; }
+.header-row { display:flex; align-items:center; justify-content:space-between; }
+.header h1 { font-size:20px; font-weight:700; }
+.header-back { display:none; background:none; border:none; color:white; font-size:28px; cursor:pointer; padding:0 10px 0 0; line-height:1; }
+.header-sub { font-size:13px; opacity:0.75; margin-top:2px; }
+.btn-add-list { background:rgba(255,255,255,0.2); border:none; color:white; border-radius:20px; padding:7px 14px; font-size:13px; font-weight:600; cursor:pointer; }
+.btn-add-list:active { background:rgba(255,255,255,0.35); }
+
+.screen { display:none; padding:16px 16px calc(32px + var(--safe-bottom)); }
+.screen.active { display:block; }
+
+.list-grid { display:flex; flex-direction:column; gap:12px; }
+.list-card { background:var(--card); border-radius:16px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+.list-card-header { display:flex; align-items:center; justify-content:space-between; padding:16px 16px 12px; cursor:pointer; }
+.list-card-header:active { background:#fafafa; }
+.list-info { flex:1; }
+.list-name { font-size:16px; font-weight:600; }
+.list-meta { font-size:13px; color:var(--muted); margin-top:2px; }
+.list-arrow { font-size:20px; color:#ccc; }
+.list-progress { height:4px; background:#eee; margin:0 16px 14px; border-radius:2px; }
+.list-progress-bar { height:4px; background:var(--green); border-radius:2px; transition:width 0.3s; }
+.list-actions { display:flex; border-top:1px solid var(--border); }
+.list-action-btn { flex:1; padding:11px; border:none; background:none; font-size:13px; cursor:pointer; color:var(--muted); }
+.list-action-btn:active { background:#f5f5f5; }
+.list-action-btn.danger { color:var(--red); }
+
+.category-block { margin-bottom:16px; }
+.category-label { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; padding:0 4px; margin-bottom:8px; }
+.item-card { background:var(--card); border-radius:14px; margin-bottom:6px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.05); }
+.item-row { display:flex; align-items:center; gap:14px; padding:13px 14px; cursor:pointer; }
+.item-row:active { background:#fafafa; }
+.item-check { width:24px; height:24px; border:2px solid #ccc; border-radius:7px; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+.item-check.checked { background:var(--green); border-color:var(--green); }
+.item-check.checked::after { content:'✓'; color:white; font-size:13px; font-weight:700; }
+.item-text { flex:1; }
+.item-name { font-size:15px; font-weight:500; }
+.item-name.checked { color:#bbb; text-decoration:line-through; }
+.item-qty { font-size:13px; color:var(--muted); margin-top:1px; }
+.item-delete { background:none; border:none; color:#ddd; font-size:22px; cursor:pointer; padding:2px 6px; line-height:1; }
+.item-delete:active { color:var(--red); }
+
+.filter-row { display:flex; gap:8px; margin-bottom:14px; overflow-x:auto; padding-bottom:2px; -webkit-overflow-scrolling:touch; }
+.filter-btn { border:1.5px solid var(--border); background:white; border-radius:20px; padding:6px 14px; font-size:13px; white-space:nowrap; cursor:pointer; color:var(--muted); flex-shrink:0; }
+.filter-btn.active { background:var(--green); border-color:var(--green); color:white; font-weight:600; }
+
+.add-item-bar { background:white; border-radius:14px; padding:12px 16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.05); }
+.add-item-bar input { width:100%; border:none; outline:none; font-size:15px; font-family:inherit; color:var(--text); }
+.add-item-bar input::placeholder { color:#bbb; }
+.add-item-row { display:flex; gap:8px; margin-top:10px; }
+.add-item-row input { flex:1; border:1.5px solid var(--border); border-radius:10px; padding:8px 12px; font-size:14px; font-family:inherit; outline:none; }
+.add-item-row input:focus { border-color:var(--green); }
+.btn-save { background:var(--green); color:white; border:none; border-radius:10px; padding:8px 16px; font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap; }
+.btn-save:active { opacity:0.85; }
+
+.empty { text-align:center; padding:40px 20px; color:var(--muted); }
+.empty-icon { font-size:44px; margin-bottom:12px; }
+.empty p { font-size:15px; line-height:1.6; }
+
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:200; display:flex; align-items:flex-end; justify-content:center; opacity:0; pointer-events:none; transition:opacity 0.2s; }
+.modal-overlay.open { opacity:1; pointer-events:all; }
+.modal { background:white; border-radius:24px 24px 0 0; padding:24px 24px calc(24px + var(--safe-bottom)); width:100%; max-width:500px; transform:translateY(100%); transition:transform 0.3s ease; }
+.modal-overlay.open .modal { transform:translateY(0); }
+.modal h2 { font-size:18px; font-weight:700; margin-bottom:20px; }
+.modal input { width:100%; border:1.5px solid var(--border); border-radius:12px; padding:12px 14px; font-size:15px; font-family:inherit; outline:none; margin-bottom:12px; }
+.modal input:focus { border-color:var(--green); }
+.modal-btns { display:flex; gap:10px; margin-top:4px; }
+.btn-cancel { flex:1; background:#f0f0f0; border:none; border-radius:12px; padding:14px; font-size:15px; font-weight:600; cursor:pointer; color:var(--muted); }
+.btn-confirm { flex:2; background:var(--green); border:none; border-radius:12px; padding:14px; font-size:15px; font-weight:600; cursor:pointer; color:white; }
+.btn-confirm:active { opacity:0.85; }
+
+.toast { position:fixed; bottom:calc(24px + var(--safe-bottom)); left:50%; transform:translateX(-50%) translateY(20px); background:#222; color:white; padding:10px 20px; border-radius:20px; font-size:14px; opacity:0; transition:all 0.3s; z-index:300; white-space:nowrap; pointer-events:none; }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+.install-banner { background:var(--green-light); border:1.5px solid var(--green-mid); border-radius:14px; padding:14px 16px; margin-bottom:16px; display:flex; align-items:flex-start; gap:12px; }
+.install-banner p { font-size:13px; color:#0F6E56; flex:1; line-height:1.6; }
+.install-banner button { background:none; border:none; font-size:18px; cursor:pointer; color:#0F6E56; flex-shrink:0; padding-top:2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-row">
+    <button class="header-back" id="btnBack" onclick="goHome()">‹</button>
+    <h1 id="headerTitle">Lista de Compras</h1>
+    <button class="btn-add-list" id="btnAddList" onclick="openModal()">+ Nova lista</button>
+  </div>
+  <div class="header-sub" id="headerSub">As tuas listas de compras</div>
+</div>
+
+<div class="screen active" id="screenHome">
+  <div class="install-banner" id="installBanner">
+    <p>Para instalar como app no iPhone: abre no <strong>Safari</strong>, toca em <strong>Partilhar ↑</strong> e depois <strong>"Adicionar ao ecrã inicial"</strong></p>
+    <button onclick="document.getElementById('installBanner').style.display='none'">✕</button>
+  </div>
+  <div class="list-grid" id="listGrid"></div>
+  <div class="empty" id="emptyHome" style="display:none">
+    <div class="empty-icon">🛒</div>
+    <p>Ainda não tens listas.<br>Toca em <strong>+ Nova lista</strong> para começar.</p>
+  </div>
+</div>
+
+<div class="screen" id="screenItems">
+  <div class="add-item-bar">
+    <input type="text" id="newItemName" placeholder="Adicionar item..." onkeydown="if(event.key==='Enter')focusQty()">
+    <div class="add-item-row">
+      <input type="text" id="newItemQty" placeholder="Quantidade (opcional)" onkeydown="if(event.key==='Enter')addItem()">
+      <button class="btn-save" onclick="addItem()">+ Adicionar</button>
+    </div>
+  </div>
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="setFilter('todos',this)">Todos</button>
+    <button class="filter-btn" onclick="setFilter('por-comprar',this)">Por comprar</button>
+    <button class="filter-btn" onclick="setFilter('comprados',this)">Comprados</button>
+  </div>
+  <div id="itemsList"></div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <h2>Nova lista</h2>
+    <input type="text" id="modalListName" placeholder="Nome da lista" maxlength="40" onkeydown="if(event.key==='Enter')document.getElementById('modalListDesc').focus()">
+    <input type="text" id="modalListDesc" placeholder="Descrição (opcional)" maxlength="60" onkeydown="if(event.key==='Enter')createList()">
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-confirm" onclick="createList()">Criar lista</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'listas_compras_v2';
+function uid() { return Math.random().toString(36).slice(2,10); }
+
+const defaultLists = [
+  {
+    id: 'lista-sopa', name: 'Sopa de legumes', desc: '6 doses — receita base',
+    createdAt: 1,
+    items: [
+      { id:uid(), name:'Cebola', qty:'2 unidades', cat:'Legumes', checked:false },
+      { id:uid(), name:'Alho', qty:'3 dentes', cat:'Legumes', checked:false },
+      { id:uid(), name:'Cenoura', qty:'3 unidades', cat:'Legumes', checked:false },
+      { id:uid(), name:'Batata', qty:'2 unidades médias', cat:'Legumes', checked:false },
+      { id:uid(), name:'Courgette', qty:'1 unidade', cat:'Legumes', checked:false },
+      { id:uid(), name:'Alho-francês', qty:'1 unidade', cat:'Legumes', checked:false },
+      { id:uid(), name:'Nabo', qty:'1 unidade', cat:'Legumes', checked:false },
+      { id:uid(), name:'Abóbora', qty:'300 g', cat:'Legumes', checked:false },
+      { id:uid(), name:'Espinafres frescos', qty:'100 g', cat:'Legumes', checked:false },
+      { id:uid(), name:'Azeite virgem extra', qty:'2 colheres de sopa', cat:'Temperos', checked:false },
+      { id:uid(), name:'Sal', qty:'1 colher de chá', cat:'Temperos', checked:false },
+      { id:uid(), name:'Salsa fresca', qty:'1 raminho (opcional)', cat:'Temperos', checked:false },
+    ]
+  },
+  {
+    id: 'lista-geral', name: 'Lista geral', desc: 'Compras semanais habituais',
+    createdAt: 2,
+    items: [
+      { id:uid(), name:'Ovos', qty:'', cat:'Proteínas', checked:false },
+      { id:uid(), name:'Fiambre de peru / frango', qty:'', cat:'Proteínas', checked:false },
+      { id:uid(), name:'Frango — peito', qty:'', cat:'Proteínas', checked:false },
+      { id:uid(), name:'Frango — asas', qty:'', cat:'Proteínas', checked:false },
+      { id:uid(), name:'Carne de vaca', qty:'', cat:'Proteínas', checked:false },
+      { id:uid(), name:'Salmão', qty:'', cat:'Proteínas', checked:false },
+      { id:uid(), name:'Filetes de peixe', qty:'', cat:'Proteínas', checked:false },
+      { id:uid(), name:'Bife de atum', qty:'', cat:'Proteínas', checked:false },
+      { id:uid(), name:'Atum em água', qty:'', cat:'Proteínas', checked:false },
+      { id:uid(), name:'Presunto', qty:'', cat:'Proteínas', checked:false },
+      { id:uid(), name:'Queijo light', qty:'', cat:'Lacticínios', checked:false },
+      { id:uid(), name:'Queijo parmesão', qty:'', cat:'Lacticínios', checked:false },
+      { id:uid(), name:'Iogurte natural', qty:'', cat:'Lacticínios', checked:false },
+      { id:uid(), name:'Leite proteico', qty:'', cat:'Lacticínios', checked:false },
+      { id:uid(), name:'Manteiga light', qty:'', cat:'Lacticínios', checked:false },
+      { id:uid(), name:'Pão de forma', qty:'', cat:'Padaria', checked:false },
+      { id:uid(), name:'Massa', qty:'', cat:'Mercearia', checked:false },
+      { id:uid(), name:'Arroz', qty:'', cat:'Mercearia', checked:false },
+      { id:uid(), name:'Grão', qty:'', cat:'Mercearia', checked:false },
+      { id:uid(), name:'Azeite', qty:'', cat:'Mercearia', checked:false },
+      { id:uid(), name:'Granola baixa em açúcares', qty:'', cat:'Mercearia', checked:false },
+      { id:uid(), name:'Café solúvel', qty:'', cat:'Mercearia', checked:false },
+      { id:uid(), name:'Café', qty:'', cat:'Mercearia', checked:false },
+      { id:uid(), name:'Cenoura', qty:'', cat:'Legumes e ervas', checked:false },
+      { id:uid(), name:'Cebola', qty:'', cat:'Legumes e ervas', checked:false },
+      { id:uid(), name:'Alface', qty:'', cat:'Legumes e ervas', checked:false },
+      { id:uid(), name:'Tomate', qty:'', cat:'Legumes e ervas', checked:false },
+      { id:uid(), name:'Pepino', qty:'', cat:'Legumes e ervas', checked:false },
+      { id:uid(), name:'Salsa', qty:'', cat:'Legumes e ervas', checked:false },
+      { id:uid(), name:'Coentros', qty:'', cat:'Legumes e ervas', checked:false },
+      { id:uid(), name:'Banana', qty:'', cat:'Fruta', checked:false },
+      { id:uid(), name:'Morangos', qty:'', cat:'Fruta', checked:false },
+      { id:uid(), name:'Papaia', qty:'', cat:'Fruta', checked:false },
+      { id:uid(), name:'Manga', qty:'', cat:'Fruta', checked:false },
+    ]
+  }
+];
+
+let state = load();
+let currentListId = null;
+let currentFilter = 'todos';
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return { lists: defaultLists };
+}
+
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+function renderHome() {
+  const grid = document.getElementById('listGrid');
+  const empty = document.getElementById('emptyHome');
+  if (!state.lists.length) { grid.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  grid.innerHTML = state.lists.map(list => {
+    const total = list.items.length;
+    const done = list.items.filter(i=>i.checked).length;
+    const pct = total ? Math.round(done/total*100) : 0;
+    return `
+    <div class="list-card">
+      <div class="list-card-header" onclick="openList('${list.id}')">
+        <div class="list-info">
+          <div class="list-name">${esc(list.name)}</div>
+          <div class="list-meta">${list.desc ? esc(list.desc)+' · ' : ''}${done}/${total} itens</div>
+        </div>
+        <div class="list-arrow">›</div>
+      </div>
+      <div class="list-progress"><div class="list-progress-bar" style="width:${pct}%"></div></div>
+      <div class="list-actions">
+        <button class="list-action-btn" onclick="resetList('${list.id}')">↺ Reiniciar</button>
+        <button class="list-action-btn danger" onclick="deleteList('${list.id}')">✕ Eliminar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderItems() {
+  const list = state.lists.find(l=>l.id===currentListId);
+  if (!list) return;
+  let items = list.items;
+  if (currentFilter==='por-comprar') items = items.filter(i=>!i.checked);
+  if (currentFilter==='comprados') items = items.filter(i=>i.checked);
+  const el = document.getElementById('itemsList');
+  if (!items.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">${currentFilter==='comprados'?'✓':'🛒'}</div><p>${currentFilter==='comprados'?'Ainda não marcaste nada.':'Todos os itens comprados! 🎉'}</p></div>`;
+    return;
+  }
+  const cats = {};
+  items.forEach(item => {
+    const c = item.cat || 'Outros';
+    if (!cats[c]) cats[c] = [];
+    cats[c].push(item);
+  });
+  el.innerHTML = Object.entries(cats).map(([cat, catItems]) => `
+    <div class="category-block">
+      <div class="category-label">${esc(cat)}</div>
+      ${catItems.map(item => `
+        <div class="item-card">
+          <div class="item-row" onclick="toggleItem('${item.id}')">
+            <div class="item-check ${item.checked?'checked':''}"></div>
+            <div class="item-text">
+              <div class="item-name ${item.checked?'checked':''}">${esc(item.name)}</div>
+              ${item.qty ? `<div class="item-qty">${esc(item.qty)}</div>` : ''}
+            </div>
+            <button class="item-delete" onclick="event.stopPropagation();deleteItem('${item.id}')">×</button>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+function openList(id) {
+  currentListId = id;
+  currentFilter = 'todos';
+  const list = state.lists.find(l=>l.id===id);
+  document.getElementById('screenHome').classList.remove('active');
+  document.getElementById('screenItems').classList.add('active');
+  document.getElementById('headerTitle').textContent = list.name;
+  document.getElementById('headerSub').textContent = list.desc || '';
+  document.getElementById('btnBack').style.display = 'block';
+  document.getElementById('btnAddList').style.display = 'none';
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.filter-btn').classList.add('active');
+  document.getElementById('newItemName').value = '';
+  document.getElementById('newItemQty').value = '';
+  renderItems();
+}
+
+function goHome() {
+  currentListId = null;
+  document.getElementById('screenItems').classList.remove('active');
+  document.getElementById('screenHome').classList.add('active');
+  document.getElementById('headerTitle').textContent = 'Lista de Compras';
+  document.getElementById('headerSub').textContent = 'As tuas listas de compras';
+  document.getElementById('btnBack').style.display = 'none';
+  document.getElementById('btnAddList').style.display = 'block';
+  renderHome();
+}
+
+function toggleItem(itemId) {
+  const list = state.lists.find(l=>l.id===currentListId);
+  const item = list.items.find(i=>i.id===itemId);
+  item.checked = !item.checked;
+  save();
+  renderItems();
+  if (item.checked && list.items.every(i=>i.checked)) showToast('Lista completa! 🎉');
+}
+
+function deleteItem(itemId) {
+  const list = state.lists.find(l=>l.id===currentListId);
+  list.items = list.items.filter(i=>i.id!==itemId);
+  save();
+  renderItems();
+}
+
+function focusQty() { document.getElementById('newItemQty').focus(); }
+
+function addItem() {
+  const name = document.getElementById('newItemName').value.trim();
+  if (!name) { document.getElementById('newItemName').focus(); return; }
+  const qty = document.getElementById('newItemQty').value.trim();
+  const list = state.lists.find(l=>l.id===currentListId);
+  list.items.push({ id:uid(), name, qty, cat:'Outros', checked:false });
+  save();
+  document.getElementById('newItemName').value = '';
+  document.getElementById('newItemQty').value = '';
+  document.getElementById('newItemName').focus();
+  if (currentFilter==='comprados') { currentFilter='todos'; document.querySelectorAll('.filter-btn').forEach((b,i)=>b.classList.toggle('active',i===0)); }
+  renderItems();
+  showToast('Item adicionado');
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderItems();
+}
+
+function resetList(id) {
+  if (!confirm('Desmarcar todos os itens desta lista?')) return;
+  state.lists.find(l=>l.id===id).items.forEach(i=>i.checked=false);
+  save(); renderHome(); showToast('Lista reiniciada');
+}
+
+function deleteList(id) {
+  if (!confirm('Eliminar esta lista permanentemente?')) return;
+  state.lists = state.lists.filter(l=>l.id!==id);
+  save(); renderHome(); showToast('Lista eliminada');
+}
+
+function openModal() {
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('modalListName').focus(), 300);
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.getElementById('modalListName').value = '';
+  document.getElementById('modalListDesc').value = '';
+}
+
+function closeModalOutside(e) {
+  if (e.target===document.getElementById('modalOverlay')) closeModal();
+}
+
+function createList() {
+  const name = document.getElementById('modalListName').value.trim();
+  if (!name) { document.getElementById('modalListName').focus(); return; }
+  const desc = document.getElementById('modalListDesc').value.trim();
+  const newList = { id:uid(), name, desc, items:[], createdAt:Date.now() };
+  state.lists.push(newList);
+  save(); closeModal(); renderHome();
+  setTimeout(()=>openList(newList.id), 150);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+renderHome();
+</script>
+</body>
+</html>
