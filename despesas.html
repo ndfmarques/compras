@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Despesas">
+<title>Despesas — Ancortex</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;color:#1a1a1a;min-height:100vh}
+  #app{max-width:480px;margin:0 auto;padding:16px;padding-bottom:40px}
+  h1{font-size:20px;font-weight:600;color:#1a1a1a;margin-bottom:2px;display:flex;align-items:center;gap:8px}
+  h1 svg{flex-shrink:0}
+  .sub{font-size:13px;color:#888;margin-bottom:20px;margin-top:2px}
+  .tab-bar{display:flex;gap:8px;margin-bottom:16px}
+  .tab{flex:1;padding:10px;text-align:center;font-size:14px;border:1px solid #ddd;border-radius:10px;cursor:pointer;color:#888;background:#fff;font-weight:500;transition:all 0.15s}
+  .tab.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+  .card{background:#fff;border:1px solid #e5e5e5;border-radius:14px;padding:16px;margin-bottom:12px}
+  .upload-zone{border:2px dashed #ddd;border-radius:10px;padding:36px 16px;text-align:center;cursor:pointer;transition:background 0.15s;-webkit-tap-highlight-color:transparent}
+  .upload-zone:active{background:#f9f9f9}
+  .upload-zone svg{display:block;margin:0 auto 10px;color:#aaa}
+  .upload-zone p{font-size:14px;color:#aaa}
+  #fileInput{display:none}
+  #previewImg{width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin-top:12px;display:none}
+  .ai-row{display:none;align-items:center;gap:10px;margin-top:14px}
+  .amount-box{flex:1;background:#f5f5f5;border-radius:10px;padding:10px 14px}
+  .amount-label{font-size:11px;color:#888;margin-bottom:2px}
+  .amount-input{font-size:26px;font-weight:600;color:#1a1a1a;background:transparent;border:none;outline:none;width:100%;font-family:inherit}
+  .ai-badge{font-size:12px;padding:5px 10px;border-radius:20px;background:#f0f0f0;color:#888;white-space:nowrap;display:flex;align-items:center;gap:5px;flex-shrink:0}
+  .ai-badge.ok{background:#e8f5e9;color:#2e7d32}
+  .ai-badge.err{background:#fff3e0;color:#e65100}
+  .desc-field{display:none;margin-top:12px}
+  .desc-field label{font-size:12px;color:#888;display:block;margin-bottom:5px}
+  .desc-field input{width:100%;padding:10px 12px;font-size:15px;border:1px solid #e0e0e0;border-radius:10px;background:#fff;color:#1a1a1a;font-family:inherit}
+  .desc-field input:focus{outline:none;border-color:#1a1a1a}
+  .btn-save{width:100%;padding:13px;background:#1a1a1a;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-top:14px;font-family:inherit;-webkit-tap-highlight-color:transparent}
+  .btn-save:disabled{opacity:0.3;cursor:not-allowed}
+  .btn-save:active:not(:disabled){opacity:0.8}
+  .summary-bar{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:#fff;border:1px solid #e5e5e5;border-radius:14px;margin-bottom:12px}
+  .summary-total{font-size:22px;font-weight:600;color:#1a1a1a}
+  .summary-label{font-size:12px;color:#888;margin-bottom:3px}
+  .btn-pdf{padding:8px 14px;background:transparent;color:#1a1a1a;border:1px solid #ddd;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;margin-top:6px;display:flex;align-items:center;gap:5px;-webkit-tap-highlight-color:transparent}
+  .btn-pdf:active{background:#f5f5f5}
+  .receipt-list{display:flex;flex-direction:column;gap:8px}
+  .receipt-item{display:flex;align-items:center;gap:12px;padding:11px 12px;background:#fff;border:1px solid #e5e5e5;border-radius:12px}
+  .receipt-thumb{width:44px;height:44px;object-fit:cover;border-radius:8px;flex-shrink:0}
+  .receipt-ph{width:44px;height:44px;border-radius:8px;flex-shrink:0;background:#f5f5f5;display:flex;align-items:center;justify-content:center}
+  .receipt-info{flex:1;min-width:0}
+  .receipt-desc{font-size:14px;font-weight:500;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .receipt-date{font-size:12px;color:#888;margin-top:2px}
+  .receipt-amount{font-size:15px;font-weight:600;color:#1a1a1a;white-space:nowrap}
+  .receipt-del{background:none;border:none;cursor:pointer;color:#ccc;padding:6px;-webkit-tap-highlight-color:transparent}
+  .receipt-del:active{color:#e53935}
+  .empty{text-align:center;padding:40px 16px;color:#aaa;font-size:14px}
+  .empty svg{display:block;margin:0 auto 10px;opacity:0.3}
+  #view-add,#view-list{display:none}
+  #view-add.active,#view-list.active{display:block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .spin{animation:spin 0.8s linear infinite;display:inline-block}
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"/><path d="M14 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/></svg>
+    Despesas Ancortex
+  </h1>
+  <p class="sub" id="monthLabel"></p>
+
+  <div class="tab-bar">
+    <div class="tab active" id="tab-add" onclick="switchTab('add')">📷 Novo</div>
+    <div class="tab" id="tab-list" onclick="switchTab('list')">📋 Registos</div>
+  </div>
+
+  <!-- ADD VIEW -->
+  <div id="view-add" class="active">
+    <div class="card">
+      <div class="upload-zone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+        <p>Tira foto ou carrega o recibo</p>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" capture="environment">
+      <img id="previewImg" alt="pré-visualização">
+
+      <div class="ai-row" id="aiRow">
+        <div class="amount-box">
+          <div class="amount-label">Valor (USD)</div>
+          <input class="amount-input" id="fAmount" type="number" step="0.01" placeholder="0.00" inputmode="decimal">
+        </div>
+        <div class="ai-badge" id="aiBadge">✦ IA</div>
+      </div>
+
+      <div class="desc-field" id="descField">
+        <label>Descrição</label>
+        <input id="fDesc" type="text" placeholder="ex: material de obra, combustível...">
+      </div>
+
+      <button class="btn-save" id="btnSave" onclick="saveReceipt()" disabled>Guardar recibo</button>
+    </div>
+  </div>
+
+  <!-- LIST VIEW -->
+  <div id="view-list">
+    <div class="summary-bar">
+      <div>
+        <div class="summary-label">Total do mês</div>
+        <div class="summary-total" id="totalAmt">$0.00</div>
+      </div>
+      <div style="text-align:right">
+        <div class="summary-label" id="countLbl">0 recibos</div>
+        <button class="btn-pdf" onclick="exportPDF()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
+          Exportar PDF
+        </button>
+      </div>
+    </div>
+    <div class="receipt-list" id="receiptList"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const KEY = 'ancortex_exp_v2';
+let receipts = [];
+let currentImageDataURL = null;
+
+function init(){
+  const now = new Date();
+  document.getElementById('monthLabel').textContent =
+    now.toLocaleDateString('pt-PT',{month:'long',year:'numeric'});
+  try{ receipts = JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ receipts=[]; }
+}
+
+function switchTab(t){
+  ['add','list'].forEach(x=>{
+    document.getElementById('view-'+x).classList.toggle('active',x===t);
+    document.getElementById('tab-'+x).classList.toggle('active',x===t);
+  });
+  if(t==='list') renderList();
+}
+
+document.getElementById('fileInput').addEventListener('change', async e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev=>{
+    currentImageDataURL = ev.target.result;
+    const img = document.getElementById('previewImg');
+    img.src = currentImageDataURL;
+    img.style.display = 'block';
+    document.getElementById('aiRow').style.display = 'flex';
+    document.getElementById('descField').style.display = 'block';
+    document.getElementById('btnSave').disabled = false;
+    setBadge('loading');
+    const b64 = currentImageDataURL.split(',')[1];
+    const mime = file.type || 'image/jpeg';
+    await extractAmount(b64, mime);
+  };
+  reader.readAsDataURL(file);
+});
+
+function setBadge(state){
+  const b = document.getElementById('aiBadge');
+  if(state==='loading'){
+    b.innerHTML='<span class="spin">◌</span> A ler...';
+    b.className='ai-badge';
+  } else if(state==='ok'){
+    b.innerHTML='✦ IA';
+    b.className='ai-badge ok';
+  } else {
+    b.innerHTML='⚠ Manual';
+    b.className='ai-badge err';
+  }
+}
+
+async function extractAmount(b64, mime){
+  try{
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:120,
+        messages:[{
+          role:'user',
+          content:[
+            {type:'image',source:{type:'base64',media_type:mime,data:b64}},
+            {type:'text',text:'Look at this receipt. Return ONLY a JSON object, no markdown, no extra text: {"amount": <total as number>, "description": "<2-4 word summary in Portuguese of what was bought>"}. If you cannot read the total, set amount to null.'}
+          ]
+        }]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content?.find(b=>b.type==='text')?.text||'{}';
+    let parsed = {};
+    try{ parsed = JSON.parse(text.replace(/```json|```/g,'').trim()); }catch(e){}
+    if(parsed.amount){
+      document.getElementById('fAmount').value = parseFloat(parsed.amount).toFixed(2);
+      setBadge('ok');
+    } else {
+      setBadge('error');
+    }
+    if(parsed.description && !document.getElementById('fDesc').value){
+      document.getElementById('fDesc').value = parsed.description;
+    }
+  }catch(e){
+    setBadge('error');
+  }
+}
+
+function saveReceipt(){
+  const amount = parseFloat(document.getElementById('fAmount').value);
+  const desc = document.getElementById('fDesc').value.trim();
+  if(isNaN(amount)||amount<=0){
+    alert('Preenche o valor antes de guardar.');
+    return;
+  }
+  receipts.unshift({
+    id: Date.now(),
+    date: new Date().toISOString().split('T')[0],
+    amount: amount.toFixed(2),
+    description: desc || '—',
+    image: currentImageDataURL
+  });
+  localStorage.setItem(KEY, JSON.stringify(receipts));
+  resetForm();
+  switchTab('list');
+}
+
+function resetForm(){
+  document.getElementById('previewImg').style.display='none';
+  document.getElementById('aiRow').style.display='none';
+  document.getElementById('descField').style.display='none';
+  document.getElementById('btnSave').disabled=true;
+  document.getElementById('fAmount').value='';
+  document.getElementById('fDesc').value='';
+  document.getElementById('fileInput').value='';
+  currentImageDataURL=null;
+}
+
+function deleteReceipt(id){
+  if(!confirm('Apagar este recibo?')) return;
+  receipts = receipts.filter(r=>r.id!==id);
+  localStorage.setItem(KEY, JSON.stringify(receipts));
+  renderList();
+}
+
+function renderList(){
+  const now = new Date();
+  const month = receipts.filter(r=>{
+    const d = new Date(r.date);
+    return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+  });
+  const total = month.reduce((s,r)=>s+parseFloat(r.amount),0);
+  document.getElementById('totalAmt').textContent = '$'+total.toFixed(2);
+  document.getElementById('countLbl').textContent = month.length+' recibo'+(month.length!==1?'s':'');
+  const list = document.getElementById('receiptList');
+  if(!month.length){
+    list.innerHTML=`<div class="empty">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"/></svg>
+      Nenhum recibo este mês</div>`;
+    return;
+  }
+  list.innerHTML = month.map(r=>`
+    <div class="receipt-item">
+      ${r.image
+        ? `<img class="receipt-thumb" src="${r.image}" alt="recibo">`
+        : `<div class="receipt-ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"/></svg></div>`}
+      <div class="receipt-info">
+        <div class="receipt-desc">${r.description}</div>
+        <div class="receipt-date">${new Date(r.date+'T12:00:00').toLocaleDateString('pt-PT')}</div>
+      </div>
+      <div class="receipt-amount">$${r.amount}</div>
+      <button class="receipt-del" onclick="deleteReceipt(${r.id})" aria-label="Apagar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,6 5,6 21,6"/><path d="M19,6l-1,14a2,2,0,0,1-2,2H8a2,2,0,0,1-2-2L5,6"/><path d="M10,11v6"/><path d="M14,11v6"/><path d="M9,6V4a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v2"/></svg>
+      </button>
+    </div>
+  `).join('');
+}
+
+function exportPDF(){
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({unit:'mm',format:'a4'});
+  const now = new Date();
+  const monthName = now.toLocaleDateString('pt-PT',{month:'long',year:'numeric'});
+  const month = receipts.filter(r=>{
+    const d = new Date(r.date);
+    return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+  });
+  const total = month.reduce((s,r)=>s+parseFloat(r.amount),0);
+
+  // Header
+  doc.setFillColor(26,26,26);
+  doc.rect(0,0,210,38,'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(20);
+  doc.setTextColor(255,255,255);
+  doc.text('ANCORTEX',20,18);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10);
+  doc.setTextColor(180,180,180);
+  doc.text('Relatório de Despesas — '+monthName,20,27);
+  doc.setTextColor(180,180,180);
+  doc.text('Gerado em '+now.toLocaleDateString('pt-PT'),20,34);
+
+  // Summary
+  doc.setFillColor(245,245,245);
+  doc.rect(18,44,174,18,'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(14);
+  doc.setTextColor(26,26,26);
+  doc.text('$'+total.toFixed(2),20,55);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100,100,100);
+  doc.text('TOTAL DO MÊS',20,60);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(14);
+  doc.setTextColor(26,26,26);
+  doc.text(String(month.length),120,55);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100,100,100);
+  doc.text('RECIBOS',120,60);
+
+  // Table header
+  let y = 74;
+  doc.setFillColor(26,26,26);
+  doc.rect(18,y-5,174,8,'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(9);
+  doc.setTextColor(255,255,255);
+  doc.text('DATA',20,y);
+  doc.text('DESCRIÇÃO',52,y);
+  doc.text('VALOR',183,y,'right');
+  y+=8;
+
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10);
+  let row = 0;
+  for(const r of month){
+    if(y>270){doc.addPage();y=20;}
+    if(row%2===0){
+      doc.setFillColor(250,250,250);
+      doc.rect(18,y-4,174,7,'F');
+    }
+    doc.setTextColor(26,26,26);
+    doc.text(new Date(r.date+'T12:00:00').toLocaleDateString('pt-PT'),20,y);
+    doc.text(r.description.substring(0,50),52,y);
+    doc.setFont('helvetica','bold');
+    doc.text('$'+r.amount,183,y,'right');
+    doc.setFont('helvetica','normal');
+    y+=7;
+    row++;
+  }
+
+  // Total line
+  y+=3;
+  doc.setDrawColor(26,26,26);
+  doc.setLineWidth(0.5);
+  doc.line(18,y,192,y);
+  y+=6;
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(11);
+  doc.text('TOTAL',130,y);
+  doc.text('$'+total.toFixed(2),183,y,'right');
+
+  // Footer
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8);
+  doc.setTextColor(180,180,180);
+  doc.text('Ancortex — Documento gerado automaticamente',20,285);
+
+  doc.save('despesas-ancortex-'+now.toISOString().slice(0,7)+'.pdf');
+}
+
+init();
+</script>
+</body>
+</html>
